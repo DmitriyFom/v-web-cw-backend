@@ -22,6 +22,28 @@ app.get('/', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'car-valuation-backend', timestamp: new Date().toISOString() });
 });
+
+app.post('/api/valuation/vin', (req, res) => {
+  const { vin } = req.body;
+
+  if (!vin || vin.length !== 17) {
+    return res.status(400).json({ message: 'Неверный VIN' });
+  }
+
+  // Пока мок, потом будет API Авто.ру
+  setTimeout(() => {
+    res.json({
+      vin: vin.toUpperCase(),
+      brand: 'Toyota',
+      model: 'Camry',
+      year: 2021,
+      priceMin: 2800000,
+      priceAvg: 3150000,
+      priceMax: 3500000,
+      source: 'Мок-данные (скоро — Авто.ру API)',
+    });
+  }, 1200);
+});
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });
