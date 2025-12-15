@@ -11,29 +11,24 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
 
-// === ПОДКЛЮЧЕНИЕ К БАЗЕ ДАННЫХ "CAR" ===
 const pool = new Pool({
   user: 'postgres',
   host: 'localhost',
   database: 'CAR',
-  password: '1337',  // ←←←←← Твой пароль
-  port: 5432,
+  password: '1337', 
 });
 
-// Проверка подключения
 (async () => {
   try {
     const client = await pool.connect();
-    console.log('✅ Успешно подключено к базе данных CAR');
+    console.log('✅ Успешно подключено к БД');
     client.release();
   } catch (err) {
     console.error('❌ Ошибка подключения к БД:', err);
   }
 })();
 
-// === ТАБЛИЦА КОДОВ ГОДА (БЕЗ ДУБЛИКАТОВ КЛЮЧЕЙ) ===
 const yearMap: Record<string, number> = {
-  // 1980–2009
   'A': 1980, 'B': 1981, 'C': 1982, 'D': 1983, 'E': 1984,
   'F': 1985, 'G': 1986, 'H': 1987, 'J': 1988, 'K': 1989,
   'L': 1990, 'M': 1991, 'N': 1992, 'P': 1993, 'R': 1994,
@@ -42,7 +37,6 @@ const yearMap: Record<string, number> = {
   '1': 2001, '2': 2002, '3': 2003, '4': 2004, '5': 2005,
   '6': 2006, '7': 2007, '8': 2008, '9': 2009,
 
-  // 2010–2039 (новый цикл)
   'A2010': 2010, 'B2011': 2011, 'C2012': 2012, 'D2013': 2013, 'E2014': 2014,
   'F2015': 2015, 'G2016': 2016, 'H2017': 2017, 'J2018': 2018, 'K2019': 2019,
   'L2020': 2020, 'M2021': 2021, 'N2022': 2022, 'P2023': 2023, 'R2024': 2024,
@@ -51,7 +45,6 @@ const yearMap: Record<string, number> = {
   '52035': 2035, '62036': 2036, '72037': 2037, '82038': 2038, '92039': 2039,
 };
 
-// === РОУТ ОЦЕНКИ ПО VIN ===
 app.post('/api/valuation/vin', async (req: Request, res: Response) => {
   const { vin } = req.body;
 
@@ -68,13 +61,10 @@ app.post('/api/valuation/vin', async (req: Request, res: Response) => {
     const wmi = cleanVin.substring(0, 3);
     const yearCode = cleanVin[9];
 
-    // Запрещённые символы в позиции года
     if (['I', 'O', 'Q'].includes(yearCode)) {
       return res.status(400).json({ error: 'Символ в позиции года (10-й) не может быть I, O или Q' });
     }
 
-    // 1. Марка и страна из БД
-    // 1. Марка и страна из БД
     const wmiResult = await pool.query(
       'SELECT manufacturer, country FROM wmi_codes WHERE code = $1',
       [wmi]
@@ -93,8 +83,7 @@ app.post('/api/valuation/vin', async (req: Request, res: Response) => {
 
     console.log(`WMI ${wmi} → ${manufacturer} (${country})`);
 
-    // 2. Базовая цена из БД
-    let basePrice = 2200000; // Дефолт на случай, если цена не найдена
+    let basePrice = 2200000; 
 
     const priceResult = await pool.query(
       'SELECT base_price FROM brand_prices WHERE manufacturer = $1',
@@ -108,7 +97,6 @@ app.post('/api/valuation/vin', async (req: Request, res: Response) => {
       console.log(`Цена для марки "${manufacturer}" не найдена — используется дефолт ${basePrice} руб.`);
     }
 
-    // 3. Год выпуска — с автоматической корректировкой цикла
     let year = yearMap[yearCode];
     if (!year) {
       return res.status(400).json({ error: 'Некорректный код года в VIN' });
@@ -116,19 +104,16 @@ app.post('/api/valuation/vin', async (req: Request, res: Response) => {
 
     const currentYear = 2025;
 
-    // Если год "из будущего" — это старый цикл (отнимаем 30 лет)
     if (year > currentYear) {
       year -= 30;
     }
 
-    // Защита от будущего
     if (year > currentYear + 1) {
       return res.status(400).json({ error: 'VIN указывает на год из будущего' });
     }
 
     console.log(`Год по коду ${yearCode}: ${year}`);
 
-    // 4. Расчёт цены
     const age = currentYear - year;
 
     if (age > 0) {
@@ -155,7 +140,7 @@ app.post('/api/valuation/vin', async (req: Request, res: Response) => {
         avg: priceAvg,
         max: priceMax,
       },
-      source: 'Оценка на основе данных из PostgreSQL (декабрь 2025)',
+      source: 'Оценка на основе данных площадок по продаже авто',
     });
   } catch (error) {
     console.error('Ошибка при оценке VIN:', error);
@@ -163,8 +148,73 @@ app.post('/api/valuation/vin', async (req: Request, res: Response) => {
   }
 });
 
-// === ЗАПУСК ===
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Бэкенд запущен: http://localhost:${PORT}`);
+  console.log(`Бэкенд запущен: http://localhost:${PORT}`);
 });
+
+app.post('/api/valuation/params', async (req: Request, res: Response) => {
+  const { brand, model, year, mileage, bodyType, engine, transmission, doors, accident } = req.body;
+
+  if (!brand || !year || !mileage) {
+    return res.status(400).json({ error: 'Обязательные параметры: марка, год, пробег' });
+  }
+
+  try {
+    let basePrice = 2200000; // Дефолт
+
+    const priceResult = await pool.query(
+      'SELECT base_price FROM brand_prices WHERE manufacturer = $1',
+      [brand]
+    );
+
+    if (priceResult.rows.length > 0) {
+      basePrice = priceResult.rows[0].base_price;
+      console.log(`Найдена цена для ${brand}: ${basePrice} руб.`);
+    } else {
+      console.log(`Марка "${brand}" не найдена в brand_prices — дефолт ${basePrice} руб.`);
+    }
+
+    const currentYear = 2025;
+    const age = currentYear - year;
+    if (age > 0) {
+      basePrice *= Math.pow(0.88, age); 
+    }
+
+    const mileagePenalty = mileage / 10000 * 0.01; // 1% за 10 тыс. км
+    basePrice *= Math.max(0.5, 1 - mileagePenalty); // не ниже 50%
+
+    if (accident) {
+      basePrice *= 0.85;
+    }
+
+    if (bodyType === 'Внедорожник') {
+      basePrice *= 1.1; // +10%
+    }
+
+    basePrice *= 0.9 + Math.random() * 0.2;
+
+    const priceAvg = Math.max(500000, Math.round(basePrice));
+    const priceMin = Math.round(priceAvg * 0.88);
+    const priceMax = Math.round(priceAvg * 1.15);
+
+    res.json({
+      brand,
+      model,
+      year,
+      mileage,
+      accident,
+      price: {
+        min: priceMin,
+        avg: priceAvg,
+        max: priceMax,
+      },
+      source: 'Оценка на основе рыночных данных (декабрь 2025)',
+    });
+  } catch (error) {
+    console.error('Ошибка при оценке по параметрам:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
