@@ -58,21 +58,20 @@ const getYearFromCode = (code: string): number | null => {
   if (newCycle[code] !== undefined) {
     let year = newCycle[code];
     if (year > currentYear) {
-      year -= 30; // Если "из будущего" — старый цикл
+      year -= 30; 
     }
     return year;
   }
 
-  // Затем старый цикл
+
   if (oldCycle[code] !== undefined) {
     return oldCycle[code];
   }
 
-  // Неизвестный код
+
   return null;
 };
 
-// === РОУТ ОЦЕНКИ ПО VIN ===
 app.post('/api/valuation/vin', async (req: Request, res: Response) => {
   const { vin } = req.body;
 
@@ -170,7 +169,7 @@ app.post('/api/valuation/vin', async (req: Request, res: Response) => {
   }
 });
 
-// === РОУТ ОЦЕНКИ ПО ХАРАКТЕРИСТИКАМ (ГИБКАЯ ЛОГИКА) ===
+
 app.post('/api/valuation/params', async (req: Request, res: Response) => {
   const {
     brand,
@@ -223,7 +222,7 @@ app.post('/api/valuation/params', async (req: Request, res: Response) => {
       basePrice *= 0.80;
     }
 
-    // По типу кузова
+
     const bodyBonus: Record<string, number> = {
       'Внедорожник': 1.15,
       'Кроссовер': 1.12,
@@ -234,7 +233,7 @@ app.post('/api/valuation/params', async (req: Request, res: Response) => {
     };
     basePrice *= bodyBonus[bodyType] || 1.0;
 
-    // По двигателю
+
     const engineBonus: Record<string, number> = {
       'Дизель': 1.08,
       'Электро': 1.25,
@@ -242,7 +241,7 @@ app.post('/api/valuation/params', async (req: Request, res: Response) => {
     };
     basePrice *= engineBonus[engine] || 1.0;
 
-    // По коробке
+
     const transmissionBonus: Record<string, number> = {
       'Автомат': 1.12,
       'Вариатор': 1.08,
@@ -251,18 +250,16 @@ app.post('/api/valuation/params', async (req: Request, res: Response) => {
     };
     basePrice *= transmissionBonus[transmission] || 1.0;
 
-    // По дверям
+
     if (doors === '5') basePrice *= 1.05;
     if (doors === '2') basePrice *= 1.08;
 
-    // По региону
     if (region === 'Москва' || region === 'СПб') {
       basePrice *= 1.15;
     } else if (region === 'Регионы России') {
       basePrice *= 0.90;
     }
 
-    // По состоянию
     const conditionBonus: Record<string, number> = {
       'Отличное': 1.15,
       'Хорошее': 1.0,
@@ -270,7 +267,6 @@ app.post('/api/valuation/params', async (req: Request, res: Response) => {
     };
     basePrice *= conditionBonus[condition] || 1.0;
 
-    // По комплектации
     const complectationBonus: Record<string, number> = {
       'Премиум': 1.20,
       'Средняя': 1.0,
@@ -278,7 +274,6 @@ app.post('/api/valuation/params', async (req: Request, res: Response) => {
     };
     basePrice *= complectationBonus[complectation] || 1.0;
 
-    // Рыночная вариация
     basePrice *= 0.9 + Math.random() * 0.2;
 
     const priceAvg = Math.max(300000, Math.round(basePrice));
@@ -311,7 +306,6 @@ app.post('/api/valuation/params', async (req: Request, res: Response) => {
   }
 });
 
-// === ЗАПУСК СЕРВЕРА ===
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Бэкенд запущен: http://localhost:${PORT}`);
