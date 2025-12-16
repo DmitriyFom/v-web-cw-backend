@@ -19,7 +19,6 @@ const pool = new Pool({
   port: 5432,
 });
 
-
 (async () => {
   try {
     const client = await pool.connect();
@@ -29,7 +28,6 @@ const pool = new Pool({
     console.error('❌ Ошибка подключения к БД:', err);
   }
 })();
-
 
 const getYearFromCode = (code: string): number | null => {
   const oldCycle: Record<string, number> = {
@@ -53,17 +51,13 @@ const getYearFromCode = (code: string): number | null => {
 
   if (newCycle[code] !== undefined) {
     let year = newCycle[code];
-    if (year > currentYear) {
-      year -= 30; 
-    }
+    if (year > currentYear) year -= 30;
     return year;
   }
-
 
   if (oldCycle[code] !== undefined) {
     return oldCycle[code];
   }
-
 
   return null;
 };
@@ -117,7 +111,7 @@ app.post('/api/valuation/vin', async (req: Request, res: Response) => {
       basePrice = priceResult.rows[0].base_price;
       console.log(`Цена найдена: ${basePrice} руб.`);
     } else {
-      console.log(`Марка "${manufacturer}" не найдена в brand_prices — дефолт ${basePrice} руб.`);
+      console.log(`Марка "${manufacturer}" не найдена — дефолт ${basePrice} руб.`);
     }
 
     const year = getYearFromCode(yearCode);
@@ -134,13 +128,11 @@ app.post('/api/valuation/vin', async (req: Request, res: Response) => {
 
     const age = currentYear - year;
     if (age > 0) {
-      basePrice *= Math.pow(0.92, age); // 8% снижение в год — гибко
+      basePrice *= Math.pow(0.92, age);
     }
 
     const avgMileage = age * 15000;
-    basePrice *= Math.max(0.3, 1 - avgMileage / 300000); // не ниже 30%
-
-    basePrice *= 0.9 + Math.random() * 0.2;
+    basePrice *= Math.max(0.3, 1 - avgMileage / 300000);
 
     const priceAvg = Math.max(300000, Math.round(basePrice));
     const priceMin = Math.round(priceAvg * 0.85);
@@ -164,7 +156,6 @@ app.post('/api/valuation/vin', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
-
 
 app.post('/api/valuation/params', async (req: Request, res: Response) => {
   const {
@@ -215,7 +206,6 @@ app.post('/api/valuation/params', async (req: Request, res: Response) => {
       basePrice *= 0.80;
     }
 
-
     const bodyBonus: Record<string, number> = {
       'Внедорожник': 1.15,
       'Кроссовер': 1.12,
@@ -226,14 +216,12 @@ app.post('/api/valuation/params', async (req: Request, res: Response) => {
     };
     basePrice *= bodyBonus[bodyType] || 1.0;
 
-
     const engineBonus: Record<string, number> = {
       'Дизель': 1.08,
       'Электро': 1.25,
       'Гибрид': 1.20,
     };
     basePrice *= engineBonus[engine] || 1.0;
-
 
     const transmissionBonus: Record<string, number> = {
       'Автомат': 1.12,
@@ -242,7 +230,6 @@ app.post('/api/valuation/params', async (req: Request, res: Response) => {
       'Механика': 0.92,
     };
     basePrice *= transmissionBonus[transmission] || 1.0;
-
 
     if (doors === '5') basePrice *= 1.05;
     if (doors === '2') basePrice *= 1.08;
@@ -266,8 +253,6 @@ app.post('/api/valuation/params', async (req: Request, res: Response) => {
       'Базовая': 0.90,
     };
     basePrice *= complectationBonus[complectation] || 1.0;
-
-    basePrice *= 0.9 + Math.random() * 0.2;
 
     const priceAvg = Math.max(300000, Math.round(basePrice));
     const priceMin = Math.round(priceAvg * 0.85);
