@@ -11,7 +11,6 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
 
-// === ПОДКЛЮЧЕНИЕ К БАЗЕ ДАННЫХ "CAR" ===
 const pool = new Pool({
   user: 'postgres',
   host: 'localhost',
@@ -20,7 +19,7 @@ const pool = new Pool({
   port: 5432,
 });
 
-// Проверка подключения
+
 (async () => {
   try {
     const client = await pool.connect();
@@ -31,9 +30,8 @@ const pool = new Pool({
   }
 })();
 
-// === УМНАЯ ФУНКЦИЯ ДЛЯ ОПРЕДЕЛЕНИЯ ГОДА ПО КОДУ (БЕЗ ДУБЛИКАТОВ КЛЮЧЕЙ!) ===
+
 const getYearFromCode = (code: string): number | null => {
-  // Старый цикл (1980–2009)
   const oldCycle: Record<string, number> = {
     'A': 1980, 'B': 1981, 'C': 1982, 'D': 1983, 'E': 1984,
     'F': 1985, 'G': 1986, 'H': 1987, 'J': 1988, 'K': 1989,
@@ -44,7 +42,6 @@ const getYearFromCode = (code: string): number | null => {
     '6': 2006, '7': 2007, '8': 2008, '9': 2009,
   };
 
-  // Новый цикл (2010–2025)
   const newCycle: Record<string, number> = {
     'A': 2010, 'B': 2011, 'C': 2012, 'D': 2013, 'E': 2014,
     'F': 2015, 'G': 2016, 'H': 2017, 'J': 2018, 'K': 2019,
@@ -54,7 +51,6 @@ const getYearFromCode = (code: string): number | null => {
 
   const currentYear = 2025;
 
-  // Сначала проверяем новый цикл
   if (newCycle[code] !== undefined) {
     let year = newCycle[code];
     if (year > currentYear) {
@@ -208,16 +204,13 @@ app.post('/api/valuation/params', async (req: Request, res: Response) => {
     const currentYear = 2025;
     const age = currentYear - year;
 
-    // По году — 8% снижение (гибко)
     if (age > 0) {
       basePrice *= Math.pow(0.92, age);
     }
 
-    // По пробегу — 0.5% за 10 тыс. км
     const mileagePenalty = (mileage / 10000) * 0.005;
     basePrice *= Math.max(0.3, 1 - mileagePenalty);
 
-    // По ДТП
     if (accident) {
       basePrice *= 0.80;
     }
